@@ -12,16 +12,16 @@ jobs:
         with:
           submodules: recursive
 
-      # ۱. ساختن فایل Dockerfile مخصوص که ابزارهای لازم را دارد
+      # ۱. ساخت داکر ایمیج شامل ابزارهای لازم
       - name: Create Custom Docker Image
         run: |
           cat <<EOF > Dockerfile.aarch64
           FROM ghcr.io/cross-rs/aarch64-unknown-linux-gnu:main
           ENV DEBIAN_FRONTEND=noninteractive
+          # نصب cmake و dependencies
           RUN apt-get update && apt-get install -y cmake clang libssl-dev pkg-config
           EOF
 
-      # ۲. بیلد کردن ایمیج داکر
       - name: Build Docker Image
         run: docker build -t custom-cross-image -f Dockerfile.aarch64 .
 
@@ -34,14 +34,21 @@ jobs:
         run: |
           curl -L https://github.com/cross-rs/cross/releases/latest/download/cross-x86_64-unknown-linux-musl.tar.gz | tar xz -C /usr/local/bin
 
-      # ۳. اجرای Cross با اشاره به ایمیج ساخته شده
+      # ۲. بیلد نهایی با تنظیم دقیق کامپایلر C
       - name: Build Server with Cross
         run: cross build --release --target aarch64-unknown-linux-gnu -p slipstream-server
         env:
-          # این خط جادویی است: به Cross می‌گوید از ایمیج ما استفاده کن
           CROSS_TARGET_AARCH64_UNKNOWN_LINUX_GNU_IMAGE: custom-cross-image
           OPENSSL_VENDORED: 1
           PICOQUIC_AUTO_BUILD: 1
+          # --- تغییرات مهم اینجاست ---
+          # به Cargo می‌گوییم برای تارگت aarch64 حتما از کامپایلر مخصوص آن استفاده کند
+          CC_aarch64_unknown_linux_gnu: aarch64-linux-gnu-gcc
+          CXX_aarch64_unknown_linux_gnu: aarch64-linux-gnu-g++
+          AR_aarch64_unknown_linux_gnu: aarch64-linux-gnu-ar
+          # برای اطمینان بیشتر، متغیرهای عمومی را هم ست می‌کنیم
+          CC: aarch64-linux-gnu-gcc
+          CXX: aarch64-linux-gnu-g++
 
       - name: Upload Server Binary
         uses: actions/upload-artifact@v4
