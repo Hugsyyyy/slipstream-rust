@@ -1,7 +1,7 @@
 name: ARM64 Manual Build
 
 on:
-  workflow_dispatch: # این گزینه اجازه می‌دهد بیلد را دستی اجرا کنی
+  workflow_dispatch:
 
 jobs:
   build-aarch64:
@@ -16,7 +16,8 @@ jobs:
       - name: Install Build Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y gcc-aarch64-linux-gnu cmake pkg-config python3
+          # ما اینجا فقط به لینکر و ابزارهای پایه نیاز داریم
+          sudo apt-get install -y gcc-aarch64-linux-gnu cmake pkg-config python3 perl make
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
@@ -26,7 +27,9 @@ jobs:
       - name: Build Binary
         env:
           CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
-          # استفاده از ویژگی vendored برای بسته‌بندی OpenSSL داخل فایل نهایی
+          # این خط کلیدی است: OpenSSL را خودش برای ARM میسازد
+          OPENSSL_VENDORED: 1
+          # اگر پروژه از لایبری‌های سیستم استفاده میکند، این کمک میکند
           PKG_CONFIG_ALLOW_CROSS: 1
         run: cargo build --release --target aarch64-unknown-linux-gnu
 
