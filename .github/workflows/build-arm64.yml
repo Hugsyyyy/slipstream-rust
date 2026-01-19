@@ -1,0 +1,41 @@
+name: Build slipstream ARM64
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y \
+            build-essential cmake pkg-config \
+            libssl-dev clang libclang-dev git
+
+      - name: Install Rust with ARM64 target
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-unknown-linux-gnu
+
+      - name: Set up environment for picoquic
+        run: |
+          export PICOQUIC_AUTO_BUILD=1
+
+      - name: Build slipstream-server for ARM64
+        run: |
+          cargo build --release --target aarch64-unknown-linux-gnu -p slipstream-server
+
+      - name: Upload ARM64 binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: slipstream-server-arm64
+          path: target/aarch64-unknown-linux-gnu/release/slipstream-server
