@@ -19,37 +19,40 @@ jobs:
             bash -c "
               set -e
               
-              echo '>>> Configuring Environment...'
+              echo '>>> Preparing System for ARM64...'
               dpkg --add-architecture arm64
               apt-get update
               apt-get install -y git cmake make perl pkg-config \
                 gcc-aarch64-linux-gnu g++-aarch64-linux-gnu \
                 libssl-dev:arm64 libbrotli-dev:arm64
               
-              # حل مشکل مالکیت گیت که در لاگ شما بود
               git config --global --add safe.directory /project
-              git config --global --add safe.directory /project/vendor/picoquic
               
               rustup target add aarch64-unknown-linux-gnu
               
-              # تنظیمات دقیق لینک کردن OpenSSL برای ARM64
-              export AR_aarch64_unknown_linux_gnu=aarch64-linux-gnu-ar
-              export CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc
-              export CXX_aarch64_unknown_linux_gnu=aarch64-linux-gnu-g++
-              export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
+              echo '>>> Setting Linker and Library Paths...'
+              # تنظیم مسیرهایی که CMake همین الان فایل‌ها را در آنجا ساخته است
+              export PICOQUIC_DIR=/project/.picoquic-build
+              export PICOQUIC_LIB_DIR=/project/.picoquic-build
+              export PICOQUIC_INCLUDE_DIR=/project/vendor/picoquic/picoquic
               
-              # متغیرهای حیاتی برای پیدا شدن کتابخانه‌ها توسط Rust
-              export PKG_CONFIG_PATH=/usr/lib/aarch64-linux-gnu/pkgconfig
+              # تنظیم مسیرهای OpenSSL مخصوص ARM64
               export OPENSSL_DIR=/usr/lib/aarch64-linux-gnu
               export OPENSSL_LIB_DIR=/usr/lib/aarch64-linux-gnu
               export OPENSSL_INCLUDE_DIR=/usr/include/aarch64-linux-gnu
+              export PKG_CONFIG_PATH=/usr/lib/aarch64-linux-gnu/pkgconfig
               
+              # ابزارهای کراس‌کامپایل
+              export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
+              export CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc
+              export CXX_aarch64_unknown_linux_gnu=aarch64-linux-gnu-g++
               export CC=aarch64-linux-gnu-gcc
               export CXX=aarch64-linux-gnu-g++
+              
               export PICOQUIC_AUTO_BUILD=1
               export OPENSSL_NO_VENDOR=1
               
-              echo '>>> Starting Cargo Build...'
+              echo '>>> Starting Final Cargo Build...'
               cargo build --release --target aarch64-unknown-linux-gnu -p slipstream-server
             "
 
