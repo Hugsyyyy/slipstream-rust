@@ -19,33 +19,34 @@ jobs:
             bash -c "
               set -e
               
-              echo '>>> Enabling Multi-Arch and Installing Dependencies...'
-              # اضافه کردن معماری arm64 به پکیج منیجر برای نصب کتابخانه‌های سیستم
+              echo '>>> Configuring Environment...'
               dpkg --add-architecture arm64
               apt-get update
               apt-get install -y git cmake make perl pkg-config \
                 gcc-aarch64-linux-gnu g++-aarch64-linux-gnu \
                 libssl-dev:arm64 libbrotli-dev:arm64
               
-              echo '>>> Adding Rust Target...'
+              # حل مشکل مالکیت گیت که در لاگ شما بود
+              git config --global --add safe.directory /project
+              git config --global --add safe.directory /project/vendor/picoquic
+              
               rustup target add aarch64-unknown-linux-gnu
               
-              echo '>>> Setting Environment Variables...'
-              # این متغیر به CMake می‌گوید کجا دنبال OpenSSL بگردد
-              export OPENSSL_DIR=/usr/lib/aarch64-linux-gnu
-              export OPENSSL_INCLUDE_DIR=/usr/include/aarch64-linux-gnu
-              
-              # تنظیمات کراس کامپایل Rust
-              export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
+              # تنظیمات دقیق لینک کردن OpenSSL برای ARM64
+              export AR_aarch64_unknown_linux_gnu=aarch64-linux-gnu-ar
               export CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc
               export CXX_aarch64_unknown_linux_gnu=aarch64-linux-gnu-g++
+              export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
               
-              # اجبار CMake به استفاده از کامپایلر صحیح برای Picoquic
+              # متغیرهای حیاتی برای پیدا شدن کتابخانه‌ها توسط Rust
+              export PKG_CONFIG_PATH=/usr/lib/aarch64-linux-gnu/pkgconfig
+              export OPENSSL_DIR=/usr/lib/aarch64-linux-gnu
+              export OPENSSL_LIB_DIR=/usr/lib/aarch64-linux-gnu
+              export OPENSSL_INCLUDE_DIR=/usr/include/aarch64-linux-gnu
+              
               export CC=aarch64-linux-gnu-gcc
               export CXX=aarch64-linux-gnu-g++
-              
               export PICOQUIC_AUTO_BUILD=1
-              # غیرفعال کردن Vendored چون الان نسخه سیستم را نصب کردیم (بهتر برای کراس بیلد)
               export OPENSSL_NO_VENDOR=1
               
               echo '>>> Starting Cargo Build...'
