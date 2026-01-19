@@ -10,22 +10,38 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          submodules: recursive # بسیار مهم برای Picoquic
+          submodules: recursive
+
+      # ۱. ساختن فایل Dockerfile مخصوص که ابزارهای لازم را دارد
+      - name: Create Custom Docker Image
+        run: |
+          cat <<EOF > Dockerfile.aarch64
+          FROM ghcr.io/cross-rs/aarch64-unknown-linux-gnu:main
+          ENV DEBIAN_FRONTEND=noninteractive
+          RUN apt-get update && apt-get install -y cmake clang libssl-dev pkg-config
+          EOF
+
+      # ۲. بیلد کردن ایمیج داکر
+      - name: Build Docker Image
+        run: docker build -t custom-cross-image -f Dockerfile.aarch64 .
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: aarch64-unknown-linux-gnu
 
-      - name: Build with Docker (Cross-compile)
-        # استفاده از داکر برای داشتن محیط کامل ARM64
+      - name: Install Cross
         run: |
-          docker run --rm -v ${{ github.workspace }}:/project -w /project \
-            -e OPENSSL_VENDORED=1 \
-            -e PICOQUIC_AUTO_BUILD=1 \
-            -e CARGO_NET_GIT_FETCH_WITH_CLI=true \
-            rustembedded/cross:aarch64-unknown-linux-gnu \
-            bash -c "apt-get update && apt-get install -y cmake clang libssl-dev && cargo build --release --target aarch64-unknown-linux-gnu -p slipstream-server"
+          curl -L https://github.com/cross-rs/cross/releases/latest/download/cross-x86_64-unknown-linux-musl.tar.gz | tar xz -C /usr/local/bin
+
+      # ۳. اجرای Cross با اشاره به ایمیج ساخته شده
+      - name: Build Server with Cross
+        run: cross build --release --target aarch64-unknown-linux-gnu -p slipstream-server
+        env:
+          # این خط جادویی است: به Cross می‌گوید از ایمیج ما استفاده کن
+          CROSS_TARGET_AARCH64_UNKNOWN_LINUX_GNU_IMAGE: custom-cross-image
+          OPENSSL_VENDORED: 1
+          PICOQUIC_AUTO_BUILD: 1
 
       - name: Upload Server Binary
         uses: actions/upload-artifact@v4
