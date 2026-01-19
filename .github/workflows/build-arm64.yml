@@ -1,4 +1,4 @@
-name: Build slipstream ARM64 (simple)
+name: Build slipstream ARM64
 
 on:
   push:
@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-      - name: Checkout repo
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
           submodules: recursive
@@ -17,16 +17,21 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt update
-          sudo apt install -y build-essential cmake pkg-config libssl-dev clang libclang-dev git curl
+          sudo apt install -y \
+            build-essential cmake pkg-config libssl-dev clang libclang-dev git curl
 
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+      - name: Install Rust and cross
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          source $HOME/.cargo/env
+          rustup target add aarch64-unknown-linux-gnu
+          cargo install cross --locked
 
-      - name: Install cross (for ARM64)
-        run: cargo install cross --locked
-
-      - name: Build slipstream-server for ARM64
-        run: cross build --release --target aarch64-unknown-linux-gnu -p slipstream-server
+      - name: Build slipstream-server (ARM64)
+        run: |
+          export OPENSSL_ROOT_DIR=/usr/include/openssl
+          export PICOQUIC_AUTO_BUILD=1
+          cross build --release --target aarch64-unknown-linux-gnu -p slipstream-server
 
       - name: Upload ARM64 binary
         uses: actions/upload-artifact@v4
