@@ -19,24 +19,34 @@ jobs:
             bash -c "
               set -e
               
-              echo '>>> Installing build tools and git...'
+              echo '>>> Enabling Multi-Arch and Installing Dependencies...'
+              # اضافه کردن معماری arm64 به پکیج منیجر برای نصب کتابخانه‌های سیستم
+              dpkg --add-architecture arm64
               apt-get update
-
-              apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu cmake make perl pkg-config git
+              apt-get install -y git cmake make perl pkg-config \
+                gcc-aarch64-linux-gnu g++-aarch64-linux-gnu \
+                libssl-dev:arm64 libbrotli-dev:arm64
               
               echo '>>> Adding Rust Target...'
               rustup target add aarch64-unknown-linux-gnu
               
               echo '>>> Setting Environment Variables...'
+              # این متغیر به CMake می‌گوید کجا دنبال OpenSSL بگردد
+              export OPENSSL_DIR=/usr/lib/aarch64-linux-gnu
+              export OPENSSL_INCLUDE_DIR=/usr/include/aarch64-linux-gnu
+              
+              # تنظیمات کراس کامپایل Rust
               export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
               export CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc
               export CXX_aarch64_unknown_linux_gnu=aarch64-linux-gnu-g++
-              export AR_aarch64_unknown_linux_gnu=aarch64-linux-gnu-ar
+              
+              # اجبار CMake به استفاده از کامپایلر صحیح برای Picoquic
               export CC=aarch64-linux-gnu-gcc
               export CXX=aarch64-linux-gnu-g++
               
-              export OPENSSL_VENDORED=1
               export PICOQUIC_AUTO_BUILD=1
+              # غیرفعال کردن Vendored چون الان نسخه سیستم را نصب کردیم (بهتر برای کراس بیلد)
+              export OPENSSL_NO_VENDOR=1
               
               echo '>>> Starting Cargo Build...'
               cargo build --release --target aarch64-unknown-linux-gnu -p slipstream-server
