@@ -12,36 +12,33 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Build inside Docker (Manual Control)
-        # ما مستقیماً از ایمیج رسمی Rust استفاده می‌کنیم و کامپایلرها را دستی نصب می‌کنیم
-        # اینطوری مطمئنیم دستور cargo وجود دارد و متغیرهای CC و CXX دقیقاً اعمال می‌شوند
+      - name: Build inside Docker
         run: |
           docker run --rm -v ${{ github.workspace }}:/project -w /project \
             rust:slim-bookworm \
             bash -c "
               set -e
               
-              echo '>>> Installing dependencies...'
+              echo '>>> Installing build tools and git...'
               apt-get update
-              apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu cmake make perl pkg-config
+
+              apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu cmake make perl pkg-config git
               
               echo '>>> Adding Rust Target...'
               rustup target add aarch64-unknown-linux-gnu
               
-              echo '>>> Building...'
-
+              echo '>>> Setting Environment Variables...'
               export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
               export CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc
               export CXX_aarch64_unknown_linux_gnu=aarch64-linux-gnu-g++
               export AR_aarch64_unknown_linux_gnu=aarch64-linux-gnu-ar
-              
               export CC=aarch64-linux-gnu-gcc
               export CXX=aarch64-linux-gnu-g++
-              
               
               export OPENSSL_VENDORED=1
               export PICOQUIC_AUTO_BUILD=1
               
+              echo '>>> Starting Cargo Build...'
               cargo build --release --target aarch64-unknown-linux-gnu -p slipstream-server
             "
 
