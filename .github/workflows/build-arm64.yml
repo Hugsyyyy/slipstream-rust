@@ -1,34 +1,32 @@
-name: Build slipstream ARM64
+name: Build ARM64
 
 on:
-  push:
-  workflow_dispatch:
+  workflow_dispatch: # این خط به شما اجازه می‌دهد بیلد را به صورت دستی شروع کنید
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
-
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
         with:
-          submodules: recursive
+          targets: aarch64-unknown-linux-gnu
 
-      - name: Install Docker & Cross
+      - name: Install Linker
         run: |
-          sudo apt update
-          sudo apt install -y docker.io pkg-config build-essential libssl-dev clang cmake git
-          cargo install cross --locked
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
 
-      - name: Build slipstream-server ARM64
+      - name: Build for aarch64
         run: |
-          # Picoquic auto-build should be enabled
-          export PICOQUIC_AUTO_BUILD=1
-          # Use cross to build ARM64
-          cross build --release --target aarch64-unknown-linux-gnu -p slipstream-server
+          cargo build --release --target aarch64-unknown-linux-gnu
+        env:
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
 
-      - name: Upload ARM64 binary
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: slipstream-server-arm64
-          path: target/aarch64-unknown-linux-gnu/release/slipstream-server
+          name: slipstream-aarch64
+          path: target/aarch64-unknown-linux-gnu/release/slipstream
