@@ -1,4 +1,4 @@
-name: ARM64 Manual Build
+name: ARM64 Build with Cross
 
 on:
   workflow_dispatch:
@@ -13,28 +13,28 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Install Build Dependencies
-        run: |
-          sudo apt-get update
-          # ما اینجا فقط به لینکر و ابزارهای پایه نیاز داریم
-          sudo apt-get install -y gcc-aarch64-linux-gnu cmake pkg-config python3 perl make
-
-      - name: Set up Rust
+      - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: aarch64-unknown-linux-gnu
 
-      - name: Build Binary
+      - name: Install Cross
+        run: |
+          # نصب مستقیم نسخه باینری برای سرعت بیشتر در گیت‌هاب
+          curl -L https://github.com/cross-rs/cross/releases/latest/download/cross-x86_64-unknown-linux-musl.tar.gz | tar xz -C /usr/local/bin
+
+      - name: Start Docker
+        # داکر در اوبونتو گیت‌هاب نصب هست، فقط باید مطمئن شویم آماده است
+        run: sudo systemctl start docker
+
+      - name: Build with Cross
         env:
-          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
-          # این خط کلیدی است: OpenSSL را خودش برای ARM میسازد
+          # با استفاده از Cross، این متغیر به داخل کانتینر پاس داده می‌شود
           OPENSSL_VENDORED: 1
-          # اگر پروژه از لایبری‌های سیستم استفاده میکند، این کمک میکند
-          PKG_CONFIG_ALLOW_CROSS: 1
-        run: cargo build --release --target aarch64-unknown-linux-gnu
+        run: cross build --release --target aarch64-unknown-linux-gnu
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: slipstream-aarch64-binary
+          name: slipstream-cross-aarch64
           path: target/aarch64-unknown-linux-gnu/release/slipstream
