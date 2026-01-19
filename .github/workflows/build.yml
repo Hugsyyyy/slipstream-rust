@@ -1,11 +1,11 @@
-name: ARM64 Build with Cross
+name: ARM64 Build Final
 
 on:
   workflow_dispatch:
 
 jobs:
   build-aarch64:
-    name: Build Release for ARM64
+    name: Build for ARM64
     runs-on: ubuntu-latest
     steps:
       - name: Check out code
@@ -20,21 +20,14 @@ jobs:
 
       - name: Install Cross
         run: |
-          # نصب مستقیم نسخه باینری برای سرعت بیشتر در گیت‌هاب
           curl -L https://github.com/cross-rs/cross/releases/latest/download/cross-x86_64-unknown-linux-musl.tar.gz | tar xz -C /usr/local/bin
 
-      - name: Start Docker
-        # داکر در اوبونتو گیت‌هاب نصب هست، فقط باید مطمئن شویم آماده است
-        run: sudo systemctl start docker
-
       - name: Build with Cross
-        env:
-          # با استفاده از Cross، این متغیر به داخل کانتینر پاس داده می‌شود
-          OPENSSL_VENDORED: 1
-        run: cross build --release --target aarch64-unknown-linux-gnu
+        # اینجا متغیر محیطی را مستقیماً در خط فرمان بیلد قرار می‌دهیم
+        run: OPENSSL_VENDORED=1 cross build --release --target aarch64-unknown-linux-gnu
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: slipstream-cross-aarch64
+          name: slipstream-aarch64
           path: target/aarch64-unknown-linux-gnu/release/slipstream
