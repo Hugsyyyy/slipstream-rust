@@ -1,17 +1,14 @@
-name: ARM64 Build Final
+name: Build Slipstream Server ARM64
 
 on:
-  workflow_dispatch:
+  workflow_dispatch: # اجرای دستی از تب Actions
 
 jobs:
-  build-aarch64:
-    name: Build for ARM64
+  build-server:
     runs-on: ubuntu-latest
     steps:
-      - name: Check out code
+      - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          submodules: recursive
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -22,12 +19,14 @@ jobs:
         run: |
           curl -L https://github.com/cross-rs/cross/releases/latest/download/cross-x86_64-unknown-linux-musl.tar.gz | tar xz -C /usr/local/bin
 
-      - name: Build with Cross
-        # اینجا متغیر محیطی را مستقیماً در خط فرمان بیلد قرار می‌دهیم
-        run: OPENSSL_VENDORED=1 cross build --release --target aarch64-unknown-linux-gnu
+      - name: Build Server for ARM64
+        # با دستور -p مشخص می‌کنیم فقط پروژه سرور بیلد شود
+        run: cross build --release --target aarch64-unknown-linux-gnu -p slipstream-server
+        env:
+          OPENSSL_VENDORED: 1
 
-      - name: Upload Artifact
+      - name: Upload Server Binary
         uses: actions/upload-artifact@v4
         with:
-          name: slipstream-aarch64
-          path: target/aarch64-unknown-linux-gnu/release/slipstream
+          name: slipstream-server-arm64
+          path: target/aarch64-unknown-linux-gnu/release/slipstream-server
