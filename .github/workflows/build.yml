@@ -12,43 +12,38 @@ jobs:
         with:
           submodules: recursive
 
-      # ۱. ساخت داکر ایمیج شامل ابزارهای لازم
-      - name: Create Custom Docker Image
+      - name: Build inside Docker (Manual Control)
+        # ما مستقیماً از ایمیج رسمی Rust استفاده می‌کنیم و کامپایلرها را دستی نصب می‌کنیم
+        # اینطوری مطمئنیم دستور cargo وجود دارد و متغیرهای CC و CXX دقیقاً اعمال می‌شوند
         run: |
-          cat <<EOF > Dockerfile.aarch64
-          FROM ghcr.io/cross-rs/aarch64-unknown-linux-gnu:main
-          ENV DEBIAN_FRONTEND=noninteractive
-          # نصب cmake و dependencies
-          RUN apt-get update && apt-get install -y cmake clang libssl-dev pkg-config
-          EOF
+          docker run --rm -v ${{ github.workspace }}:/project -w /project \
+            rust:slim-bookworm \
+            bash -c "
+              set -e
+              
+              echo '>>> Installing dependencies...'
+              apt-get update
+              apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu cmake make perl pkg-config
+              
+              echo '>>> Adding Rust Target...'
+              rustup target add aarch64-unknown-linux-gnu
+              
+              echo '>>> Building...'
 
-      - name: Build Docker Image
-        run: docker build -t custom-cross-image -f Dockerfile.aarch64 .
-
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: aarch64-unknown-linux-gnu
-
-      - name: Install Cross
-        run: |
-          curl -L https://github.com/cross-rs/cross/releases/latest/download/cross-x86_64-unknown-linux-musl.tar.gz | tar xz -C /usr/local/bin
-
-      # ۲. بیلد نهایی با تنظیم دقیق کامپایلر C
-      - name: Build Server with Cross
-        run: cross build --release --target aarch64-unknown-linux-gnu -p slipstream-server
-        env:
-          CROSS_TARGET_AARCH64_UNKNOWN_LINUX_GNU_IMAGE: custom-cross-image
-          OPENSSL_VENDORED: 1
-          PICOQUIC_AUTO_BUILD: 1
-          # --- تغییرات مهم اینجاست ---
-          # به Cargo می‌گوییم برای تارگت aarch64 حتما از کامپایلر مخصوص آن استفاده کند
-          CC_aarch64_unknown_linux_gnu: aarch64-linux-gnu-gcc
-          CXX_aarch64_unknown_linux_gnu: aarch64-linux-gnu-g++
-          AR_aarch64_unknown_linux_gnu: aarch64-linux-gnu-ar
-          # برای اطمینان بیشتر، متغیرهای عمومی را هم ست می‌کنیم
-          CC: aarch64-linux-gnu-gcc
-          CXX: aarch64-linux-gnu-g++
+              export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
+              export CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc
+              export CXX_aarch64_unknown_linux_gnu=aarch64-linux-gnu-g++
+              export AR_aarch64_unknown_linux_gnu=aarch64-linux-gnu-ar
+              
+              export CC=aarch64-linux-gnu-gcc
+              export CXX=aarch64-linux-gnu-g++
+              
+              
+              export OPENSSL_VENDORED=1
+              export PICOQUIC_AUTO_BUILD=1
+              
+              cargo build --release --target aarch64-unknown-linux-gnu -p slipstream-server
+            "
 
       - name: Upload Server Binary
         uses: actions/upload-artifact@v4
